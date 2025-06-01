@@ -31,6 +31,12 @@ This MCP server enables seamless interaction with Google Apps Script through:
 - ✅ **Auto Token Refresh** - Handles token expiration automatically
 - ✅ **Detailed Logging** - Comprehensive error handling and debugging
 
+## 🎥 Demo Video
+
+![Google Apps Script MCP Server Demo](https://github.com/mohalmah/google-apps-script-mcp-server/blob/main/demo/google%20app%20script%20mcp%20demo.gif)
+
+*Watch the Google Apps Script MCP Server in action - creating projects, managing deployments, and executing scripts through Claude Desktop.*
+
 ## 🚀 Features
 
 ### Core Capabilities
