@@ -1,4 +1,5 @@
 import { getAuthHeaders } from '../../../lib/oauth-helper.js';
+import { logger } from '../../../lib/logger.js';
 
 /**
  * Function to list processes for a Google Apps Script project.
@@ -35,7 +36,25 @@ const executeFunction = async ({
   prettyPrint = true
 }) => {
   const baseUrl = 'https://script.googleapis.com';
+  const startTime_exec = Date.now();
+
+  logger.info('API_CALL', 'Starting script processes list request', {
+    scriptId,
+    pageSize,
+    startTime,
+    endTime,
+    functionName,
+    deploymentId,
+    baseUrl
+  });
+
   try {
+    // Validate required parameters
+    if (!scriptId) {
+      logger.error('API_CALL', 'Missing required parameter: scriptId');
+      throw new Error('scriptId is required');
+    }
+
     // Construct the URL with query parameters
     const url = new URL(`${baseUrl}/v1/processes`);
     const params = new URLSearchParams();
@@ -55,27 +74,83 @@ const executeFunction = async ({
     
     url.search = params.toString();
 
+    logger.debug('API_CALL', 'Constructed API URL', {
+      url: url.toString(),
+      queryParams: Object.fromEntries(params)
+    });
+
     // Get OAuth headers
+    logger.debug('API_CALL', 'Getting OAuth headers');
     const headers = await getAuthHeaders();
 
+    logger.logAPICall('GET', url.toString(), headers);
+
     // Perform the fetch request
+    const fetchStartTime = Date.now();
     const response = await fetch(url.toString(), {
       method: 'GET',
       headers
     });
+    
+    const fetchDuration = Date.now() - fetchStartTime;
+    const responseSize = response.headers.get('content-length') || 'unknown';
+    
+    logger.logAPIResponse('GET', url.toString(), response.status, fetchDuration, responseSize);
 
     // Check if the response was successful
     if (!response.ok) {
-      const errorData = await response.json();
-      throw new Error(errorData);
+      const errorText = await response.text();
+      let errorData;
+      
+      try {
+        errorData = JSON.parse(errorText);
+      } catch (parseError) {
+        errorData = { message: errorText };
+      }
+
+      logger.error('API_CALL', 'API request failed', {
+        status: response.status,
+        statusText: response.statusText,
+        url: url.toString(),
+        errorResponse: errorData,
+        scriptId
+      });
+      
+      throw new Error(`API Error (${response.status}): ${errorData.error?.message || errorData.message || 'Unknown error'}`);
     }
 
     // Parse and return the response data
     const data = await response.json();
+    const totalDuration = Date.now() - startTime_exec;
+    
+    logger.info('API_CALL', 'Script processes list request completed successfully', {
+      scriptId,
+      processCount: data.processes ? data.processes.length : 0,
+      hasNextPageToken: !!data.nextPageToken,
+      totalDuration: `${totalDuration}ms`,
+      responseSize: JSON.stringify(data).length
+    });
+    
     return data;
   } catch (error) {
+    logger.error('API_CALL', 'Script processes list request failed', {
+      scriptId,
+      error: {
+        message: error.message,
+        stack: error.stack
+      }
+    });
+    
     console.error('Error listing processes:', error);
-    return { error: 'An error occurred while listing processes.' };
+    return { 
+      error: true,
+      message: error.message,
+      details: {
+        scriptId,
+        timestamp: new Date().toISOString(),
+        errorType: error.name || 'Unknown'
+      }
+    };
   }
 };
 
