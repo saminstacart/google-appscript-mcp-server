@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 
-import { getOAuthAccessToken } from './lib/oauth-helper.js';
+import { getOAuthAccessToken } from '../lib/oauth-helper.js';
 
 async function updateDeploymentForWebApp() {
   const scriptId = '1fSY7y3Rh84FsgJmrFIMm4AUOV3mPgelLRvZ4Dahrv68zyDzX-cGbeYjn';

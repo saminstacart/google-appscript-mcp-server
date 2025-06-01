@@ -14,7 +14,7 @@ try {
   console.log('📦 Testing imports...');
   
   // Test basic import
-  const { TokenManager } = await import('./lib/tokenManager.js');
+  const { TokenManager } = await import('../lib/tokenManager.js');
   console.log('✅ TokenManager imported successfully');
   
   const tokenManager = new TokenManager();

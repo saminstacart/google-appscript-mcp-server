@@ -1,4 +1,5 @@
 import { getOAuthAccessToken } from '../../../lib/oauth-helper.js';
+import { logger } from '../../../lib/logger.js';
 
 /**
  * Function to get a deployment of an Apps Script project.
@@ -39,8 +40,29 @@ const executeFunction = async ({ scriptId, deploymentId }) => {
     const data = await response.json();
     return data;
   } catch (error) {
-    console.error('Error retrieving deployment:', error);
-    return { error: 'An error occurred while retrieving the deployment.' };
+    const errorDetails = {
+      message: error.message,
+      stack: error.stack,
+      scriptId,
+      deploymentId,
+      timestamp: new Date().toISOString(),
+      errorType: error.name || 'Unknown'
+    };
+
+    logger.error('DEPLOYMENT_GET', 'Error retrieving deployment', errorDetails);
+    
+    console.error('❌ Error retrieving deployment:', errorDetails);
+    
+    // Return detailed error information for debugging
+    return { 
+      error: true,
+      message: error.message,
+      details: errorDetails,
+      rawError: {
+        name: error.name,
+        stack: error.stack
+      }
+    };
   }
 };
 

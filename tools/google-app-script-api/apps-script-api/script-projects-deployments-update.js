@@ -1,3 +1,5 @@
+import { logger } from '../../../lib/logger.js';
+
 /**
  * Function to update a deployment of an Apps Script project.
  *
@@ -14,8 +16,15 @@ const executeFunction = async ({ scriptId, deploymentId, deploymentConfig }) => 
   const baseUrl = 'https://script.googleapis.com';
   const token = process.env.GOOGLE_APP_SCRIPT_API_API_KEY;
   const apiKey = process.env.GOOGLE_APP_SCRIPT_API_API_KEY;
+  const startTime = Date.now();
 
   try {
+    logger.info('DEPLOYMENT_UPDATE', 'Starting deployment update', { 
+      scriptId, 
+      deploymentId, 
+      versionNumber: deploymentConfig?.versionNumber 
+    });
+
     // Construct the URL for the request
     const url = `${baseUrl}/v1/projects/${scriptId}/deployments/${deploymentId}?key=${apiKey}&prettyPrint=true`;
 
@@ -27,27 +36,89 @@ const executeFunction = async ({ scriptId, deploymentId, deploymentConfig }) => 
     };
 
     // Prepare the body of the request
-    const body = JSON.stringify({ deploymentConfig });
+    const requestBody = { deploymentConfig };
+    const body = JSON.stringify(requestBody);
+
+    logger.logAPICall('PUT', url, headers, requestBody);
 
     // Perform the fetch request
+    const fetchStartTime = Date.now();
     const response = await fetch(url, {
       method: 'PUT',
       headers,
       body
     });
+    
+    const fetchDuration = Date.now() - fetchStartTime;
+    const responseSize = response.headers.get('content-length') || 'unknown';
+    
+    logger.logAPIResponse('PUT', url, response.status, fetchDuration, responseSize);
 
     // Check if the response was successful
     if (!response.ok) {
-      const errorData = await response.json();
-      throw new Error(errorData);
+      const errorText = await response.text();
+      let errorData;
+      
+      try {
+        errorData = JSON.parse(errorText);
+      } catch (parseError) {
+        errorData = { message: errorText };
+      }
+
+      const detailedError = {
+        status: response.status,
+        statusText: response.statusText,
+        url,
+        errorResponse: errorData,
+        duration: Date.now() - startTime,
+        scriptId,
+        deploymentId,
+        timestamp: new Date().toISOString()
+      };
+
+      logger.error('DEPLOYMENT_UPDATE', 'API request failed', detailedError);
+      
+      console.error('❌ API Error Details:', JSON.stringify(detailedError, null, 2));
+      
+      throw new Error(`API Error (${response.status}): ${errorData.error?.message || errorData.message || 'Unknown error'}`);
     }
 
     // Parse and return the response data
     const data = await response.json();
+    
+    logger.info('DEPLOYMENT_UPDATE', 'Successfully updated deployment', {
+      scriptId,
+      deploymentId,
+      duration: Date.now() - startTime
+    });
+    
+    console.log('✅ Successfully updated deployment');
     return data;
   } catch (error) {
-    console.error('Error updating deployment:', error);
-    return { error: 'An error occurred while updating the deployment.' };
+    const errorDetails = {
+      message: error.message,
+      stack: error.stack,
+      scriptId,
+      deploymentId,
+      duration: Date.now() - startTime,
+      timestamp: new Date().toISOString(),
+      errorType: error.name || 'Unknown'
+    };
+
+    logger.error('DEPLOYMENT_UPDATE', 'Error updating deployment', errorDetails);
+    
+    console.error('❌ Error updating deployment:', errorDetails);
+    
+    // Return detailed error information for debugging
+    return { 
+      error: true,
+      message: error.message,
+      details: errorDetails,
+      rawError: {
+        name: error.name,
+        stack: error.stack
+      }
+    };
   }
 };
 

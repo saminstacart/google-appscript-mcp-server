@@ -1,3 +1,5 @@
+import { logger } from '../../../lib/logger.js';
+
 /**
  * Function to get a version of a Google Apps Script project.
  *
@@ -61,8 +63,29 @@ const executeFunction = async ({ scriptId, versionNumber, fields, alt = 'json', 
     const data = await response.json();
     return data;
   } catch (error) {
-    console.error('Error retrieving script version:', error);
-    return { error: 'An error occurred while retrieving the script version.' };
+    const errorDetails = {
+      message: error.message,
+      stack: error.stack,
+      scriptId,
+      versionNumber,
+      timestamp: new Date().toISOString(),
+      errorType: error.name || 'Unknown'
+    };
+
+    logger.error('VERSION_GET', 'Error retrieving script version', errorDetails);
+    
+    console.error('❌ Error retrieving script version:', errorDetails);
+    
+    // Return detailed error information for debugging
+    return { 
+      error: true,
+      message: error.message,
+      details: errorDetails,
+      rawError: {
+        name: error.name,
+        stack: error.stack
+      }
+    };
   }
 };
 

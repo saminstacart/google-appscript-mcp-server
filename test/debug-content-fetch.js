@@ -4,7 +4,7 @@
  * Debug script to test the get-content function directly
  */
 
-import { getOAuthAccessToken } from './lib/oauth-helper.js';
+import { getOAuthAccessToken } from '../lib/oauth-helper.js';
 
 async function testGetContent() {
   const scriptId = '1fSY7y3Rh84FsgJmrFIMm4AUOV3mPgelLRvZ4Dahrv68zyDzX-cGbeYjn';

@@ -1,4 +1,5 @@
 import { getOAuthAccessToken } from '../../../lib/oauth-helper.js';
+import { logger } from '../../../lib/logger.js';
 
 /**
  * Function to create a new version of a Google Apps Script project.
@@ -11,12 +12,15 @@ import { getOAuthAccessToken } from '../../../lib/oauth-helper.js';
 const executeFunction = async ({ scriptId, description }) => {
   const baseUrl = 'https://script.googleapis.com';
   const url = `${baseUrl}/v1/projects/${scriptId}/versions`;
+  const startTime = Date.now();
 
   const body = JSON.stringify({
     description
   });
 
   try {
+    logger.info('VERSION_CREATE', 'Starting version creation', { scriptId, description });
+
     // Get OAuth access token
     const token = await getOAuthAccessToken();
     
@@ -27,26 +31,87 @@ const executeFunction = async ({ scriptId, description }) => {
       'Authorization': `Bearer ${token}`
     };
 
+    logger.logAPICall('POST', url, headers, { description });
+
     // Perform the fetch request
+    const fetchStartTime = Date.now();
     const response = await fetch(url, {
       method: 'POST',
       headers,
       body
     });
+    
+    const fetchDuration = Date.now() - fetchStartTime;
+    const responseSize = response.headers.get('content-length') || 'unknown';
+    
+    logger.logAPIResponse('POST', url, response.status, fetchDuration, responseSize);
 
     // Check if the response was successful
     if (!response.ok) {
       const errorText = await response.text();
-      console.error('API Error Response:', errorText);
-      throw new Error(`HTTP ${response.status}: ${errorText}`);
+      let errorData;
+      
+      try {
+        errorData = JSON.parse(errorText);
+      } catch (parseError) {
+        errorData = { message: errorText };
+      }
+
+      const detailedError = {
+        status: response.status,
+        statusText: response.statusText,
+        url,
+        errorResponse: errorData,
+        duration: Date.now() - startTime,
+        scriptId,
+        description,
+        timestamp: new Date().toISOString()
+      };
+
+      logger.error('VERSION_CREATE', 'API request failed', detailedError);
+      
+      console.error('❌ API Error Details:', JSON.stringify(detailedError, null, 2));
+      
+      throw new Error(`API Error (${response.status}): ${errorData.error?.message || errorData.message || 'Unknown error'}`);
     }
 
     // Parse and return the response data
     const data = await response.json();
+    
+    logger.info('VERSION_CREATE', 'Successfully created version', {
+      scriptId,
+      versionNumber: data.versionNumber,
+      description,
+      duration: Date.now() - startTime
+    });
+    
+    console.log('✅ Successfully created version');
     return data;
   } catch (error) {
-    console.error('Error creating version:', error);
-    return { error: 'An error occurred while creating the version.' };
+    const errorDetails = {
+      message: error.message,
+      stack: error.stack,
+      scriptId,
+      description,
+      duration: Date.now() - startTime,
+      timestamp: new Date().toISOString(),
+      errorType: error.name || 'Unknown'
+    };
+
+    logger.error('VERSION_CREATE', 'Error creating version', errorDetails);
+    
+    console.error('❌ Error creating version:', errorDetails);
+    
+    // Return detailed error information for debugging
+    return { 
+      error: true,
+      message: error.message,
+      details: errorDetails,
+      rawError: {
+        name: error.name,
+        stack: error.stack
+      }
+    };
   }
 };
 

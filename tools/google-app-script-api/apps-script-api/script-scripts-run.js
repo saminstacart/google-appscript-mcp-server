@@ -1,4 +1,5 @@
 import { getAuthHeaders } from '../../../lib/oauth-helper.js';
+import { logger } from '../../../lib/logger.js';
 
 /**
  * Function to run a Google Apps Script.
@@ -54,8 +55,28 @@ const executeFunction = async ({ scriptId, fields, alt = 'json', key, access_tok
     const data = await response.json();
     return data;
   } catch (error) {
-    console.error('Error running the script:', error);
-    return { error: 'An error occurred while running the script.' };
+    const errorDetails = {
+      message: error.message,
+      stack: error.stack,
+      scriptId,
+      timestamp: new Date().toISOString(),
+      errorType: error.name || 'Unknown'
+    };
+
+    logger.error('SCRIPT_RUN', 'Error running the script', errorDetails);
+    
+    console.error('❌ Error running the script:', errorDetails);
+    
+    // Return detailed error information for debugging
+    return { 
+      error: true,
+      message: error.message,
+      details: errorDetails,
+      rawError: {
+        name: error.name,
+        stack: error.stack
+      }
+    };
   }
 };
 

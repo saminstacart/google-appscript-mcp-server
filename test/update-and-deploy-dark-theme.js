@@ -4,7 +4,7 @@
  * Update script content to dark theme and deploy as web app
  */
 
-import { getOAuthAccessToken } from './lib/oauth-helper.js';
+import { getOAuthAccessToken } from '../lib/oauth-helper.js';
 
 const scriptId = '1fSY7y3Rh84FsgJmrFIMm4AUOV3mPgelLRvZ4Dahrv68zyDzX-cGbeYjn';
 

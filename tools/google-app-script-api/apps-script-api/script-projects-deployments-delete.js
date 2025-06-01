@@ -1,3 +1,5 @@
+import { logger } from '../../../lib/logger.js';
+
 /**
  * Function to delete a deployment of an Apps Script project.
  *
@@ -35,8 +37,29 @@ const executeFunction = async ({ scriptId, deploymentId }) => {
     const data = await response.json();
     return data;
   } catch (error) {
-    console.error('Error deleting deployment:', error);
-    return { error: 'An error occurred while deleting the deployment.' };
+    const errorDetails = {
+      message: error.message,
+      stack: error.stack,
+      scriptId,
+      deploymentId,
+      timestamp: new Date().toISOString(),
+      errorType: error.name || 'Unknown'
+    };
+
+    logger.error('DEPLOYMENT_DELETE', 'Error deleting deployment', errorDetails);
+    
+    console.error('❌ Error deleting deployment:', errorDetails);
+    
+    // Return detailed error information for debugging
+    return { 
+      error: true,
+      message: error.message,
+      details: errorDetails,
+      rawError: {
+        name: error.name,
+        stack: error.stack
+      }
+    };
   }
 };
 

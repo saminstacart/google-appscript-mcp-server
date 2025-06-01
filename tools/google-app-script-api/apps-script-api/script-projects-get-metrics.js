@@ -1,3 +1,5 @@
+import { logger } from '../../../lib/logger.js';
+
 /**
  * Function to get metrics data for Google Apps Script projects.
  *
@@ -55,8 +57,29 @@ const executeFunction = async ({ scriptId, deploymentId, metricsGranularity, fie
     const data = await response.json();
     return data;
   } catch (error) {
-    console.error('Error getting metrics data:', error);
-    return { error: 'An error occurred while getting metrics data.' };
+    const errorDetails = {
+      message: error.message,
+      stack: error.stack,
+      scriptId,
+      deploymentId,
+      timestamp: new Date().toISOString(),
+      errorType: error.name || 'Unknown'
+    };
+
+    logger.error('METRICS_GET', 'Error getting metrics data', errorDetails);
+    
+    console.error('❌ Error getting metrics data:', errorDetails);
+    
+    // Return detailed error information for debugging
+    return { 
+      error: true,
+      message: error.message,
+      details: errorDetails,
+      rawError: {
+        name: error.name,
+        stack: error.stack
+      }
+    };
   }
 };
 

@@ -1,4 +1,5 @@
 import { getOAuthAccessToken } from '../../../lib/oauth-helper.js';
+import { logger } from '../../../lib/logger.js';
 
 /**
  * Function to update the content of a Google Apps Script project.
@@ -10,8 +11,14 @@ import { getOAuthAccessToken } from '../../../lib/oauth-helper.js';
  */
 const executeFunction = async ({ scriptId, files }) => {
   const baseUrl = 'https://script.googleapis.com';
+  const startTime = Date.now();
 
   try {
+    logger.info('SCRIPT_UPDATE_CONTENT', 'Starting script content update', { 
+      scriptId, 
+      filesCount: files?.length || 0 
+    });
+
     // Get OAuth access token
     const token = await getOAuthAccessToken();
     
@@ -26,28 +33,89 @@ const executeFunction = async ({ scriptId, files }) => {
     };
 
     // Prepare the body of the request
-    const body = JSON.stringify({ scriptId, files });
+    const requestBody = { scriptId, files };
+    const body = JSON.stringify(requestBody);
+
+    logger.logAPICall('PUT', url, headers, requestBody);
 
     // Perform the fetch request
+    const fetchStartTime = Date.now();
     const response = await fetch(url, {
       method: 'PUT',
       headers,
       body
     });
+    
+    const fetchDuration = Date.now() - fetchStartTime;
+    const responseSize = response.headers.get('content-length') || 'unknown';
+    
+    logger.logAPIResponse('PUT', url, response.status, fetchDuration, responseSize);
 
     // Check if the response was successful
     if (!response.ok) {
       const errorText = await response.text();
-      console.error('API Error Response:', errorText);
-      throw new Error(`HTTP ${response.status}: ${errorText}`);
+      let errorData;
+      
+      try {
+        errorData = JSON.parse(errorText);
+      } catch (parseError) {
+        errorData = { message: errorText };
+      }
+
+      const detailedError = {
+        status: response.status,
+        statusText: response.statusText,
+        url,
+        errorResponse: errorData,
+        duration: Date.now() - startTime,
+        scriptId,
+        filesCount: files?.length || 0,
+        timestamp: new Date().toISOString()
+      };
+
+      logger.error('SCRIPT_UPDATE_CONTENT', 'API request failed', detailedError);
+      
+      console.error('❌ API Error Details:', JSON.stringify(detailedError, null, 2));
+      
+      throw new Error(`API Error (${response.status}): ${errorData.error?.message || errorData.message || 'Unknown error'}`);
     }
 
     // Parse and return the response data
     const data = await response.json();
+    
+    logger.info('SCRIPT_UPDATE_CONTENT', 'Successfully updated script content', {
+      scriptId,
+      filesCount: files?.length || 0,
+      duration: Date.now() - startTime
+    });
+    
+    console.log('✅ Successfully updated script content');
     return data;
   } catch (error) {
-    console.error('Error updating script project content:', error);
-    return { error: 'An error occurred while updating the script project content.' };
+    const errorDetails = {
+      message: error.message,
+      stack: error.stack,
+      scriptId,
+      filesCount: files?.length || 0,
+      duration: Date.now() - startTime,
+      timestamp: new Date().toISOString(),
+      errorType: error.name || 'Unknown'
+    };
+
+    logger.error('SCRIPT_UPDATE_CONTENT', 'Error updating script project content', errorDetails);
+    
+    console.error('❌ Error updating script project content:', errorDetails);
+    
+    // Return detailed error information for debugging
+    return { 
+      error: true,
+      message: error.message,
+      details: errorDetails,
+      rawError: {
+        name: error.name,
+        stack: error.stack
+      }
+    };
   }
 };
 

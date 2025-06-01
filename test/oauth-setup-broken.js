@@ -6,8 +6,8 @@
  */
 
 import 'dotenv/config';
-import { manualOAuthFlow } from './lib/oauth-helper.js';
-import { TokenManager } from './lib/tokenManager.js';
+import { manualOAuthFlow } from '../lib/oauth-helper.js';
+import { TokenManager } from '../lib/tokenManager.js';
 import { readFileSync } from 'fs';
 
 console.log('🔐 Google Apps Script API OAuth Setup');
@@ -42,13 +42,6 @@ async function setupOAuth() {
     process.exit(0);
   }
   
-  // Handle clear command
-  if (process.argv.includes('--clear')) {
-    tokenManager.clearTokens();
-    console.log('✅ Tokens cleared successfully.');
-    process.exit(0);
-  }
-  
   // Check if tokens already exist
   const tokenInfo = tokenManager.getTokenInfo();
   if (tokenInfo.hasTokens) {
@@ -70,6 +63,13 @@ async function setupOAuth() {
     }
   }
   
+  // Handle clear command
+  if (process.argv.includes('--clear')) {
+    tokenManager.clearTokens();
+    console.log('✅ Tokens cleared successfully.');
+    process.exit(0);
+  }
+  
   try {
     // Check if .env file exists and has required credentials
     const envPath = '.env';
@@ -86,8 +86,7 @@ async function setupOAuth() {
       console.log('\n📖 Note: Refresh token is now stored securely and not needed in .env file');
       process.exit(1);
     }
-    
-    // Check for required credentials
+      // Check for required credentials
     const hasClientId = envContent.includes('GOOGLE_APP_SCRIPT_API_CLIENT_ID=') && 
                        !envContent.includes('GOOGLE_APP_SCRIPT_API_CLIENT_ID=your_client_id_here');
     const hasClientSecret = envContent.includes('GOOGLE_APP_SCRIPT_API_CLIENT_SECRET=') && 
@@ -102,8 +101,7 @@ async function setupOAuth() {
       process.exit(1);
     }
     
-    console.log('✅ Found required credentials in .env file');
-    console.log('\n🚀 Starting OAuth flow...');
+    console.log('✅ Found required credentials in .env file');    console.log('\n🚀 Starting OAuth flow...');
     console.log('📱 Your browser will open automatically');
     console.log('🔐 Please authorize the application when prompted');
     console.log('⏳ Waiting for authorization...\n');
@@ -123,20 +121,101 @@ async function setupOAuth() {
         
         const tokenInfo = tokenManager.getTokenInfo();
         console.log(`📁 Token location: ${tokenInfo.location}`);
-        console.log(`🔒 File permissions: Owner read/write only`);
         
-        console.log('\n✅ Setup complete! Your OAuth tokens are now stored securely.');
-        console.log('🔐 Refresh tokens are stored in a secure OS-specific location');
-        console.log('🚀 You can now use the MCP server and API tools');
-        
-        console.log('\n🧪 Test your setup with:');
-        console.log('   node test-token-management.js');
-        
-      } catch (saveError) {
-        console.error('\n❌ Failed to save tokens:', saveError.message);
-        console.log('🔧 Please check file permissions and try again');
+      } catch (error) {
+        console.error('❌ Failed to save tokens:', error.message);
+        console.log('\n📝 Please run the setup again or contact support.');
         process.exit(1);
       }
+      
+      console.log('\n📋 Setup Summary:');
+      console.log('   ✅ OAuth flow completed');
+      console.log('   ✅ Access token obtained');
+      console.log('   ✅ Refresh token obtained');
+      console.log('   ✅ Tokens stored securely');
+      console.log('\n🔐 Security Notes:');
+      console.log('   🔒 Refresh token is stored with restricted file permissions');
+      console.log('   ⏰ Access token will be refreshed automatically');
+      console.log('   🚫 No sensitive tokens are stored in .env file');
+      console.log('\n🎯 Next Steps:');
+      console.log('   1. Test the OAuth setup: npm run test-oauth');
+      console.log('   2. Configure your MCP client (Claude Desktop, VS Code, etc.)');
+      console.log('   3. Use your MCP tools with confidence!');
+      
+    } else {
+      console.error('\n❌ OAuth setup failed: No refresh token received');
+      console.log('🔧 This might happen if:');
+      console.log('   - Your OAuth app is not configured correctly');
+      console.log('   - You denied the authorization request');
+      console.log('   - There was a network error during the process');
+      console.log('\n📖 Please check the OAUTH_SETUP.md guide and try again.');
+      process.exit(1);
+    }
+    
+  } catch (error) {
+    console.error('\n❌ OAuth setup failed:', error.message);
+    
+    if (error.message.includes('EADDRINUSE')) {
+      console.log('\n🔧 Port already in use. Please:');
+      console.log('   1. Close any other applications using port 3001');
+      console.log('   2. Wait a moment and try again');
+    } else if (error.message.includes('CLIENT_ID') || error.message.includes('CLIENT_SECRET')) {
+      console.log('\n🔧 OAuth credential issue. Please:');
+      console.log('   1. Check your .env file has correct credentials');
+      console.log('   2. Verify credentials in Google Cloud Console');
+      console.log('   3. Make sure OAuth consent screen is configured');
+    } else {
+      console.log('\n🔧 Please check:');
+      console.log('   1. Your internet connection');
+      console.log('   2. Google Cloud Console OAuth configuration');
+      console.log('   3. That you authorized the application in the browser');
+    }
+    
+    console.log('\n📖 For detailed setup instructions, see OAUTH_SETUP.md');
+    process.exit(1);
+  }
+}
+
+// Handle command line arguments
+if (process.argv.includes('--help') || process.argv.includes('-h')) {
+  console.log('📖 Google Apps Script OAuth Setup');
+  console.log('\nUsage:');
+  console.log('  node oauth-setup.js           # Run OAuth setup');
+  console.log('  node oauth-setup.js --force   # Force new OAuth setup (overwrite existing tokens)');
+  console.log('  node oauth-setup.js --clear   # Clear stored tokens');
+  console.log('  node oauth-setup.js --info    # Show token information');
+  console.log('  node oauth-setup.js --help    # Show this help');
+  process.exit(0);
+}
+
+if (process.argv.includes('--info')) {
+  const tokenManager = new TokenManager();
+  const tokenInfo = tokenManager.getTokenInfo();
+  
+  console.log('🔍 Token Information:');
+  console.log('=====================\n');
+  
+  if (tokenInfo.hasTokens) {
+    console.log('✅ Tokens found');
+    console.log(`📁 Location: ${tokenInfo.location}`);
+    console.log(`💾 Saved at: ${tokenInfo.savedAt}`);
+    console.log(`⏰ Expires at: ${tokenInfo.expiresAt}`);
+    console.log(`📊 Status: ${tokenInfo.status}`);
+    console.log(`🔐 Scope: ${tokenInfo.scope || 'Not specified'}`);
+  } else {
+    console.log('❌ No tokens found');
+    console.log(`📁 Expected location: ${tokenInfo.location}`);
+    console.log('\n💡 Run "node oauth-setup.js" to set up OAuth tokens');
+  }
+  
+  process.exit(0);
+}
+
+// Run setup
+setupOAuth().catch((error) => {
+  console.error('💥 Unexpected error:', error);
+  process.exit(1);
+});
       
     } else {
       console.log('\n⚠️ OAuth completed but no refresh token received.');
@@ -157,8 +236,13 @@ async function setupOAuth() {
   }
 }
 
-// Run setup
-setupOAuth().catch((error) => {
-  console.error('💥 Unexpected error:', error);
-  process.exit(1);
-});
+// Run setup if this script is executed directly
+console.log('🔍 Debug: process.argv[1]:', process.argv[1]);
+console.log('🔍 Debug: endsWith check:', process.argv[1] && process.argv[1].endsWith('oauth-setup.js'));
+
+if (process.argv[1] && process.argv[1].endsWith('oauth-setup.js')) {
+  console.log('🚀 Starting OAuth setup...');
+  setupOAuth();
+} else {
+  console.log('❌ Script not executed directly, skipping setup');
+}
