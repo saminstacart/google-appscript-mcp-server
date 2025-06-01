@@ -1,3 +1,5 @@
+import { getOAuthAccessToken } from '../../../lib/oauth-helper.js';
+
 /**
  * Function to update the content of a Google Apps Script project.
  *
@@ -8,18 +10,19 @@
  */
 const executeFunction = async ({ scriptId, files }) => {
   const baseUrl = 'https://script.googleapis.com';
-  const token = process.env.GOOGLE_APP_SCRIPT_API_API_KEY;
-  const apiKey = process.env.GOOGLE_APP_SCRIPT_API_API_KEY;
 
   try {
+    // Get OAuth access token
+    const token = await getOAuthAccessToken();
+    
     // Construct the URL for the request
-    const url = `${baseUrl}/v1/projects/${scriptId}/content?key=${apiKey}`;
+    const url = `${baseUrl}/v1/projects/${scriptId}/content`;
 
     // Set up headers for the request
     const headers = {
+      'Authorization': `Bearer ${token}`,
       'Content-Type': 'application/json',
-      'Accept': 'application/json',
-      'Authorization': `Bearer ${token}`
+      'Accept': 'application/json'
     };
 
     // Prepare the body of the request
@@ -34,8 +37,9 @@ const executeFunction = async ({ scriptId, files }) => {
 
     // Check if the response was successful
     if (!response.ok) {
-      const errorData = await response.json();
-      throw new Error(errorData);
+      const errorText = await response.text();
+      console.error('API Error Response:', errorText);
+      throw new Error(`HTTP ${response.status}: ${errorText}`);
     }
 
     // Parse and return the response data

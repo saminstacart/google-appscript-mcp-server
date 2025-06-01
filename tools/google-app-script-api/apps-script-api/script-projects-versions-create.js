@@ -1,26 +1,25 @@
+import { getOAuthAccessToken } from '../../../lib/oauth-helper.js';
+
 /**
  * Function to create a new version of a Google Apps Script project.
  *
  * @param {Object} args - Arguments for creating a new version.
  * @param {string} args.scriptId - The ID of the script project.
  * @param {string} args.description - A description for the new version.
- * @param {string} args.createTime - The creation time of the version.
- * @param {number} args.versionNumber - The version number to be assigned.
  * @returns {Promise<Object>} - The result of the version creation.
  */
-const executeFunction = async ({ scriptId, description, createTime, versionNumber }) => {
+const executeFunction = async ({ scriptId, description }) => {
   const baseUrl = 'https://script.googleapis.com';
-  const token = process.env.GOOGLE_APP_SCRIPT_API_API_KEY;
-  const url = `${baseUrl}/v1/projects/${scriptId}/versions?fields=*&alt=json`;
+  const url = `${baseUrl}/v1/projects/${scriptId}/versions`;
 
   const body = JSON.stringify({
-    description,
-    createTime,
-    versionNumber,
-    scriptId
+    description
   });
 
   try {
+    // Get OAuth access token
+    const token = await getOAuthAccessToken();
+    
     // Set up headers for the request
     const headers = {
       'Content-Type': 'application/json',
@@ -37,8 +36,9 @@ const executeFunction = async ({ scriptId, description, createTime, versionNumbe
 
     // Check if the response was successful
     if (!response.ok) {
-      const errorData = await response.json();
-      throw new Error(errorData);
+      const errorText = await response.text();
+      console.error('API Error Response:', errorText);
+      throw new Error(`HTTP ${response.status}: ${errorText}`);
     }
 
     // Parse and return the response data
@@ -71,17 +71,9 @@ const apiTool = {
           description: {
             type: 'string',
             description: 'A description for the new version.'
-          },
-          createTime: {
-            type: 'string',
-            description: 'The creation time of the version.'
-          },
-          versionNumber: {
-            type: 'integer',
-            description: 'The version number to be assigned.'
           }
         },
-        required: ['scriptId', 'description', 'createTime', 'versionNumber']
+        required: ['scriptId', 'description']
       }
     }
   }

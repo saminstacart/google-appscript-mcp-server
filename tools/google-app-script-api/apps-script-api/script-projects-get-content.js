@@ -1,9 +1,11 @@
+import { getOAuthAccessToken } from '../../../lib/oauth-helper.js';
+
 /**
  * Function to get the content of a Google Apps Script project.
  *
  * @param {Object} args - Arguments for the request.
  * @param {string} args.scriptId - The ID of the script project to retrieve content for.
- * @param {string} [args.versionNumber="23988349"] - The version number of the script project.
+ * @param {string} [args.versionNumber] - The version number of the script project.
  * @param {string} [args.fields] - Selector specifying which fields to include in a partial response.
  * @param {string} [args.alt="json"] - Data format for response.
  * @param {string} [args.key] - API key for the project.
@@ -11,34 +13,25 @@
  * @param {string} [args.prettyPrint="true"] - Returns response with indentations and line breaks.
  * @returns {Promise<Object>} - The content of the script project.
  */
-const executeFunction = async ({ scriptId, versionNumber = "23988349", fields, alt = "json", key, access_token, prettyPrint = "true" }) => {
+const executeFunction = async ({ scriptId, versionNumber, fields, alt = "json", key, access_token, prettyPrint = "true" }) => {
   const baseUrl = 'https://script.googleapis.com';
-  const token = process.env.GOOGLE_APP_SCRIPT_API_API_KEY;
   try {
+    // Get OAuth access token
+    const token = await getOAuthAccessToken();
+    
     // Construct the URL with query parameters
     const url = new URL(`${baseUrl}/v1/projects/${scriptId}/content`);
-    url.searchParams.append('versionNumber', versionNumber);
+    if (versionNumber) url.searchParams.append('versionNumber', versionNumber);
     if (fields) url.searchParams.append('fields', fields);
     url.searchParams.append('alt', alt);
     if (key) url.searchParams.append('key', key);
-    url.searchParams.append('$.xgafv', '1');
-    url.searchParams.append('upload_protocol', 'raw');
-    url.searchParams.append('uploadType', 'media');
-    if (access_token) url.searchParams.append('access_token', access_token);
-    url.searchParams.append('quotaUser', 'user');
-    url.searchParams.append('oauth_token', access_token);
-    url.searchParams.append('callback', 'callback');
-    url.searchParams.append('prettyPrint', prettyPrint);
+    if (prettyPrint) url.searchParams.append('prettyPrint', prettyPrint);
 
     // Set up headers for the request
     const headers = {
-      'Accept': 'application/json'
+      'Accept': 'application/json',
+      'Authorization': `Bearer ${token}`
     };
-
-    // If a token is provided, add it to the Authorization header
-    if (token) {
-      headers['Authorization'] = `Bearer ${token}`;
-    }
 
     // Perform the fetch request
     const response = await fetch(url.toString(), {
@@ -48,8 +41,9 @@ const executeFunction = async ({ scriptId, versionNumber = "23988349", fields, a
 
     // Check if the response was successful
     if (!response.ok) {
-      const errorData = await response.json();
-      throw new Error(errorData);
+      const errorText = await response.text();
+      console.error('API Error Response:', errorText);
+      throw new Error(`HTTP ${response.status}: ${errorText}`);
     }
 
     // Parse and return the response data

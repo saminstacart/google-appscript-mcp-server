@@ -1,3 +1,5 @@
+import { getOAuthAccessToken } from '../../../lib/oauth-helper.js';
+
 /**
  * Function to list the deployments of a Google Apps Script project.
  *
@@ -11,17 +13,17 @@
  */
 const executeFunction = async ({ scriptId, pageSize = 50, pageToken, fields, prettyPrint = true }) => {
   const baseUrl = 'https://script.googleapis.com';
-  const token = process.env.GOOGLE_APP_SCRIPT_API_API_KEY;
-  const apiKey = process.env.GOOGLE_APP_SCRIPT_API_API_KEY;
 
   try {
+    // Get OAuth access token
+    const token = await getOAuthAccessToken();
+    
     // Construct the URL with query parameters
     const url = new URL(`${baseUrl}/v1/projects/${scriptId}/deployments`);
     url.searchParams.append('pageSize', pageSize.toString());
     if (pageToken) url.searchParams.append('pageToken', pageToken);
     if (fields) url.searchParams.append('fields', fields);
     url.searchParams.append('alt', 'json');
-    url.searchParams.append('key', apiKey);
     url.searchParams.append('prettyPrint', prettyPrint.toString());
 
     // Set up headers for the request
@@ -38,8 +40,9 @@ const executeFunction = async ({ scriptId, pageSize = 50, pageToken, fields, pre
 
     // Check if the response was successful
     if (!response.ok) {
-      const errorData = await response.json();
-      throw new Error(errorData);
+      const errorText = await response.text();
+      console.error('API Error Response:', errorText);
+      throw new Error(`HTTP ${response.status}: ${errorText}`);
     }
 
     // Parse and return the response data

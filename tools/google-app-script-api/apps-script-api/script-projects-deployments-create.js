@@ -12,10 +12,9 @@ import { getAuthHeaders } from '../../../lib/oauth-helper.js';
  */
 const executeFunction = async ({ scriptId, manifestFileName, versionNumber, description }) => {
   const baseUrl = 'https://script.googleapis.com';
-  const url = `${baseUrl}/v1/projects/${scriptId}/deployments?fields=occaecat dolor eu&alt=json`;
+  const url = `${baseUrl}/v1/projects/${scriptId}/deployments`;
 
   const body = {
-    scriptId,
     manifestFileName,
     versionNumber,
     description
@@ -35,8 +34,9 @@ const executeFunction = async ({ scriptId, manifestFileName, versionNumber, desc
 
     // Check if the response was successful
     if (!response.ok) {
-      const errorData = await response.json();
-      throw new Error(errorData);
+      const errorText = await response.text();
+      console.error('API Error Response:', errorText);
+      throw new Error(`HTTP ${response.status}: ${errorText}`);
     }
 
     // Parse and return the response data

@@ -1,3 +1,5 @@
+import { getOAuthAccessToken } from '../../../lib/oauth-helper.js';
+
 /**
  * Function to list the versions of a Google Apps Script project.
  *
@@ -15,8 +17,11 @@
  */
 const executeFunction = async ({ scriptId, pageSize = 100, pageToken, fields, key, access_token, oauth_token, prettyPrint = true }) => {
   const baseUrl = 'https://script.googleapis.com';
-  const token = process.env.GOOGLE_APP_SCRIPT_API_API_KEY;
+  
   try {
+    // Get OAuth access token
+    const token = await getOAuthAccessToken();
+    
     // Construct the URL with query parameters
     const url = new URL(`${baseUrl}/v1/projects/${scriptId}/versions`);
     url.searchParams.append('pageSize', pageSize.toString());
@@ -24,20 +29,13 @@ const executeFunction = async ({ scriptId, pageSize = 100, pageToken, fields, ke
     if (fields) url.searchParams.append('fields', fields);
     url.searchParams.append('alt', 'json');
     if (key) url.searchParams.append('key', key);
-    url.searchParams.append('$.xgafv', '1');
-    if (access_token) url.searchParams.append('access_token', access_token);
-    if (oauth_token) url.searchParams.append('oauth_token', oauth_token);
-    url.searchParams.append('prettyPrint', prettyPrint.toString());
+    if (prettyPrint) url.searchParams.append('prettyPrint', prettyPrint.toString());
 
     // Set up headers for the request
     const headers = {
-      'Accept': 'application/json'
+      'Accept': 'application/json',
+      'Authorization': `Bearer ${token}`
     };
-
-    // If a token is provided, add it to the Authorization header
-    if (token) {
-      headers['Authorization'] = `Bearer ${token}`;
-    }
 
     // Perform the fetch request
     const response = await fetch(url.toString(), {
@@ -47,8 +45,9 @@ const executeFunction = async ({ scriptId, pageSize = 100, pageToken, fields, ke
 
     // Check if the response was successful
     if (!response.ok) {
-      const errorData = await response.json();
-      throw new Error(errorData);
+      const errorText = await response.text();
+      console.error('API Error Response:', errorText);
+      throw new Error(`HTTP ${response.status}: ${errorText}`);
     }
 
     // Parse and return the response data
