@@ -184,6 +184,7 @@ async function run() {
         {
           name: SERVER_NAME,
           version: "0.1.0",
+          environment: "copilot",
         },
         {
           capabilities: {
@@ -240,6 +241,7 @@ async function run() {
       {
         name: SERVER_NAME,
         version: "0.1.0",
+        environment: "copilot",
       },
       {
         capabilities: {
